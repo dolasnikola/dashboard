@@ -696,8 +696,8 @@ function renderTabs(clientId) {
     html += `<button class="tab ${i === 0 ? '' : ''}" data-platform="${p}" onclick="switchTab('${clientId}','${p}')">${label}</button>`;
   });
   tabs.innerHTML = html;
-  tabs.querySelector('.tab').classList.add('active');
-  switchTab(clientId, 'overview');
+  const defaultTab = client.platforms.length === 1 ? client.platforms[0] : 'overview';
+  switchTab(clientId, defaultTab);
 }
 
 function switchTab(clientId, platform) {
@@ -1043,7 +1043,8 @@ function getPrevPeriodBounds() {
   switch (activeDateRange) {
     case 'yesterday': {
       const prev = new Date(y, mo, d - 2);
-      return { from: prev, to: prev, label: 'vs prekjuče' };
+      const prevStr = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}-${String(prev.getDate()).padStart(2,'0')}`;
+      return { from: new Date(prevStr), to: new Date(prevStr + 'T23:59:59.999Z'), label: 'vs prekjuče' };
     }
     case 'last_7': {
       const from = new Date(today); from.setDate(d - 13);
