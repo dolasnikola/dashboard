@@ -930,6 +930,8 @@ function groupByProduct(rawRows) {
 
   rawRows.forEach(r => {
     const name = (r.campaign || '').toLowerCase();
+    // Samo pmax i search kampanje — demand gen je optimizovan na klikove
+    if (!name.includes('pmax') && !name.includes('search')) return;
     let matched = false;
     for (const key of Object.keys(NLB_PRODUCTS)) {
       if (name.includes(key)) {
