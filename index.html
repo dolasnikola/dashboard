@@ -1256,9 +1256,9 @@ function renderPlatformView(clientId, platform) {
   container.innerHTML = `
     <div class="section-title">${PLATFORM_NAMES[platform]} <span class="campaign-type ${typeClass}">${setup.label}</span></div>
     ${metricsHTML}
+    ${productsHTML}
     ${chartHTML}
     ${tableHTML}
-    ${productsHTML}
   `;
 
   // Render charts
