@@ -1037,12 +1037,64 @@ function renderProductsChart() {
 }
 
 // ============== MoM & SPARKLINE ==============
-function getPrevMonthAgg(clientId, platform, setup) {
-  const now = new Date();
-  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
-  const prevRows = getCampaignData(clientId, platform, prevMonth);
-  if (prevRows.length === 0) return null;
+function getPrevPeriodBounds() {
+  const today = new Date();
+  const y = today.getFullYear(), mo = today.getMonth(), d = today.getDate();
+  switch (activeDateRange) {
+    case 'yesterday': {
+      const prev = new Date(y, mo, d - 2);
+      return { from: prev, to: prev, label: 'vs prekjuče' };
+    }
+    case 'last_7': {
+      const from = new Date(today); from.setDate(d - 13);
+      const to = new Date(today); to.setDate(d - 7);
+      return { from, to, label: 'vs prethodnih 7 dana' };
+    }
+    case 'last_30': {
+      const from = new Date(today); from.setDate(d - 59);
+      const to = new Date(today); to.setDate(d - 30);
+      return { from, to, label: 'vs prethodnih 30 dana' };
+    }
+    case 'this_month': {
+      const from = new Date(y, mo - 1, 1);
+      const to = new Date(y, mo, 0);
+      return { from, to, label: 'vs prošli mesec' };
+    }
+    case 'last_month': {
+      const from = new Date(y, mo - 2, 1);
+      const to = new Date(y, mo - 1, 0);
+      return { from, to, label: 'vs mesec pre' };
+    }
+    case 'custom': {
+      if (!customDateFrom || !customDateTo) return null;
+      const cFrom = new Date(customDateFrom);
+      const cTo = new Date(customDateTo);
+      const rangeMs = cTo.getTime() - cFrom.getTime();
+      const prevTo = new Date(cFrom.getTime() - 86400000);
+      const prevFrom = new Date(cFrom.getTime() - rangeMs - 86400000);
+      return { from: prevFrom, to: prevTo, label: 'vs prethodni period' };
+    }
+    default:
+      return null;
+  }
+}
+
+function getDataForRange(clientId, platform, fromDate, toDate) {
+  const months = getMonthsInRange(fromDate, toDate);
+  let allRows = [];
+  months.forEach(m => { allRows = allRows.concat(getCampaignData(clientId, platform, m)); });
+  if (allRows.length > 0 && allRows[0].date) {
+    allRows = allRows.filter(r => { const rd = new Date(r.date); return rd >= fromDate && rd <= toDate; });
+  }
+  return allRows;
+}
+
+function getPrevPeriodAgg(clientId, platform, setup) {
+  const prev = getPrevPeriodBounds();
+  if (!prev) return { agg: null, label: '' };
+
+  const prevRows = getDataForRange(clientId, platform, prev.from, prev.to);
+  if (prevRows.length === 0) return { agg: null, label: prev.label };
 
   const rows = aggregateByCampaign(prevRows);
   const agg = {};
@@ -1059,10 +1111,10 @@ function getPrevMonthAgg(clientId, platform, setup) {
   if (agg.ctr !== undefined) agg.ctr = agg.impressions > 0 ? agg.clicks / agg.impressions * 100 : 0;
   if (agg.cpc !== undefined) agg.cpc = agg.clicks > 0 ? agg.spend / agg.clicks : 0;
   if (agg.cpa !== undefined) agg.cpa = agg.conversions > 0 ? agg.spend / agg.conversions : 0;
-  return agg;
+  return { agg, label: prev.label };
 }
 
-function getMoMHTML(metric, current, prev) {
+function getMoMHTML(metric, current, prev, label) {
   if (!prev || prev[metric] === undefined || prev[metric] === 0) return '<div class="mom-change neutral">—</div>';
   const change = ((current - prev[metric]) / prev[metric]) * 100;
   // Za CPA, CPM, CPC — pad je pozitivan (zeleno)
@@ -1070,7 +1122,7 @@ function getMoMHTML(metric, current, prev) {
   const isGood = invertedMetrics.includes(metric) ? change <= 0 : change >= 0;
   const cls = Math.abs(change) < 0.5 ? 'neutral' : (isGood ? 'positive' : 'negative');
   const arrow = change > 0 ? '▲' : change < 0 ? '▼' : '–';
-  return `<div class="mom-change ${cls}">${arrow} ${change > 0 ? '+' : ''}${change.toFixed(1)}% vs prošli mesec</div>`;
+  return `<div class="mom-change ${cls}">${arrow} ${change > 0 ? '+' : ''}${change.toFixed(1)}% ${label || 'vs prethodni period'}</div>`;
 }
 
 function getDailyTotals(rawRows, metrics) {
@@ -1195,12 +1247,12 @@ function renderPlatformView(clientId, platform) {
     }
   }
 
-  // MoM poređenje
-  const prevAgg = getPrevMonthAgg(clientId, platform, setup);
+  // Adaptivno poređenje sa prethodnim periodom
+  const { agg: prevAgg, label: prevLabel } = getPrevPeriodAgg(clientId, platform, setup);
 
   let metricsHTML = '<div class="metrics-row">';
   setup.metrics.forEach(m => {
-    const momHTML = getMoMHTML(m, agg[m], prevAgg);
+    const momHTML = getMoMHTML(m, agg[m], prevAgg, prevLabel);
     metricsHTML += `
       <div class="metric-card">
         <div class="metric-label">${METRIC_LABELS[m]}</div>
@@ -1256,9 +1308,9 @@ function renderPlatformView(clientId, platform) {
   container.innerHTML = `
     <div class="section-title">${PLATFORM_NAMES[platform]} <span class="campaign-type ${typeClass}">${setup.label}</span></div>
     ${metricsHTML}
+    ${productsHTML}
     ${chartHTML}
     ${tableHTML}
-    ${productsHTML}
   `;
 
   // Render charts
@@ -1321,8 +1373,8 @@ function getDateRangeBounds() {
     }
     case 'yesterday': {
       const yest = new Date(y, m, d - 1);
-      const yestEnd = new Date(y, m, d - 1, 23, 59, 59, 999);
-      return { from: yest, to: yestEnd, month: `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}` };
+      const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+      return { from: new Date(yestStr), to: new Date(yestStr + 'T23:59:59.999Z'), month: yestStr.slice(0, 7) };
     }
     case 'last_7': {
       const from = new Date(today); from.setDate(d - 6);
