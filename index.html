@@ -239,8 +239,9 @@ body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg)
   </div>
   <div id="flightIndicator" class="flight-indicator" style="display:none;"></div>
   <div class="date-range-bar" id="dateRangeBar">
-    <button class="preset-btn active" data-range="this_month" onclick="setDateRange('this_month')">Trenutni mesec</button>
+    <button class="preset-btn" data-range="this_month" onclick="setDateRange('this_month')">Trenutni mesec</button>
     <button class="preset-btn" data-range="last_month" onclick="setDateRange('last_month')">Prošli mesec</button>
+    <button class="preset-btn active" data-range="yesterday" onclick="setDateRange('yesterday')">Juče</button>
     <button class="preset-btn" data-range="last_7" onclick="setDateRange('last_7')">Poslednjih 7 dana</button>
     <button class="preset-btn" data-range="last_30" onclick="setDateRange('last_30')">Poslednjih 30 dana</button>
     <button class="preset-btn" data-range="all" onclick="setDateRange('all')">Ukupno</button>
@@ -633,9 +634,9 @@ function openClient(id) {
 
   document.getElementById('flightIndicator').style.display = 'none';
 
-  // Reset date range to this month
-  activeDateRange = 'this_month';
-  document.querySelectorAll('.date-range-bar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.range === 'this_month'));
+  // Reset date range to yesterday
+  activeDateRange = 'yesterday';
+  document.querySelectorAll('.date-range-bar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.range === 'yesterday'));
   document.getElementById('dateCustomInputs').classList.remove('show');
 
   // Budget overview
@@ -1298,7 +1299,7 @@ function goHome() {
 }
 
 // ============== DATE RANGE ==============
-let activeDateRange = 'this_month';
+let activeDateRange = 'yesterday';
 let customDateFrom = null;
 let customDateTo = null;
 
@@ -1317,6 +1318,10 @@ function getDateRangeBounds() {
       const lm = new Date(y, m - 1, 1);
       const lmEnd = new Date(y, m, 0);
       return { from: lm, to: lmEnd, month: `${lm.getFullYear()}-${String(lm.getMonth()+1).padStart(2,'0')}` };
+    }
+    case 'yesterday': {
+      const yest = new Date(y, m, d - 1);
+      return { from: yest, to: yest, month: `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}` };
     }
     case 'last_7': {
       const from = new Date(today); from.setDate(d - 6);
