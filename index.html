@@ -1321,8 +1321,8 @@ function getDateRangeBounds() {
     }
     case 'yesterday': {
       const yest = new Date(y, m, d - 1);
-      const yestEnd = new Date(y, m, d - 1, 23, 59, 59, 999);
-      return { from: yest, to: yestEnd, month: `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}` };
+      const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+      return { from: new Date(yestStr), to: new Date(yestStr + 'T23:59:59.999Z'), month: yestStr.slice(0, 7) };
     }
     case 'last_7': {
       const from = new Date(today); from.setDate(d - 6);
