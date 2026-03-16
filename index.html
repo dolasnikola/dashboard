@@ -329,6 +329,7 @@ const CLIENTS = {
     currency: 'EUR',
     status: 'active',
     statusLabel: 'Aktivan',
+    defaultPlatform: 'google_ads',
     platforms: ['google_ads', 'meta', 'dv360', 'ga4'],
     tiktok: false,
     setup: {
@@ -634,9 +635,9 @@ function openClient(id) {
 
   document.getElementById('flightIndicator').style.display = 'none';
 
-  // Reset date range to yesterday
-  activeDateRange = 'yesterday';
-  document.querySelectorAll('.date-range-bar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.range === 'yesterday'));
+  // Reset date range to current month
+  activeDateRange = 'this_month';
+  document.querySelectorAll('.date-range-bar .preset-btn').forEach(b => b.classList.toggle('active', b.dataset.range === 'this_month'));
   document.getElementById('dateCustomInputs').classList.remove('show');
 
   // Budget overview
@@ -696,8 +697,7 @@ function renderTabs(clientId) {
     html += `<button class="tab ${i === 0 ? '' : ''}" data-platform="${p}" onclick="switchTab('${clientId}','${p}')">${label}</button>`;
   });
   tabs.innerHTML = html;
-  const defaultTab = client.platforms.length === 1 ? client.platforms[0] : 'overview';
-  switchTab(clientId, defaultTab);
+  switchTab(clientId, client.defaultPlatform || 'overview');
 }
 
 function switchTab(clientId, platform) {
@@ -1354,7 +1354,7 @@ function goHome() {
 }
 
 // ============== DATE RANGE ==============
-let activeDateRange = 'yesterday';
+let activeDateRange = 'this_month';
 let customDateFrom = null;
 let customDateTo = null;
 
