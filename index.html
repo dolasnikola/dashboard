@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance Marketing Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="loginGate" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;box-shadow:var(--shadow-lg);text-align:center;max-width:360px;width:100%;">
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">Performance <span style="color:var(--accent);">Dashboard</span></h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:24px;">Unesi šifru za pristup</p>
+    <input type="password" id="loginPassword" placeholder="Šifra" onkeydown="if(event.key==='Enter')checkLogin()"
+      style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;" />
+    <div id="loginError" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;">Pogrešna šifra</div>
+    <button onclick="checkLogin()" class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;">Pristupi</button>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
+<div class="header">
+  <h1>Performance <span>Dashboard</span></h1>
+  <div class="header-actions" id="headerActions">
+    <button class="btn" onclick="openSheetsModal()">Sheets Sync</button>
+    <button class="btn" onclick="openBudgetModal()">Budget</button>
+    <button class="btn btn-primary" onclick="openImportModal()">Import CSV</button>
+  </div>
+</div>
+
+<!-- HOMEPAGE -->
+<div class="container" id="homepage">
+  <h2 style="font-size:16px;color:var(--text-secondary);margin-bottom:20px;">Klijenti</h2>
+  <div class="clients-grid" id="clientsGrid"></div>
+</div>
+
+<!-- CLIENT DETAIL -->
+<div class="container detail-view" id="detailView">
+  <div class="detail-header" style="display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="btn-back" onclick="goHome()">&#8592; Nazad</button>
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="detail-title" id="detailTitle"></span>
+          <span class="currency-badge" id="detailCurrency"></span>
+          <button class="btn btn-primary" id="downloadReportBtn" data-client="" style="display:none;"></button>
+        </div>
+        <div class="detail-badges" id="detailPlatforms" style="margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+  <div id="flightIndicator" class="flight-indicator" style="display:none;"></div>
+  <div class="date-range-bar" id="dateRangeBar">
+    <button class="preset-btn" data-range="this_month" onclick="setDateRange('this_month')">Trenutni mesec</button>
+    <button class="preset-btn" data-range="last_month" onclick="setDateRange('last_month')">Prošli mesec</button>
+    <button class="preset-btn active" data-range="yesterday" onclick="setDateRange('yesterday')">Juče</button>
+    <button class="preset-btn" data-range="last_7" onclick="setDateRange('last_7')">Poslednjih 7 dana</button>
+    <button class="preset-btn" data-range="last_30" onclick="setDateRange('last_30')">Poslednjih 30 dana</button>
+    <button class="preset-btn" data-range="all" onclick="setDateRange('all')">Ukupno</button>
+    <button class="preset-btn" data-range="custom" onclick="setDateRange('custom')">Custom</button>
+    <div class="date-custom" id="dateCustomInputs">
+      <input type="date" class="date-input" id="dateFrom" onchange="applyCustomDateRange()" />
+      <span class="date-sep">–</span>
+      <input type="date" class="date-input" id="dateTo" onchange="applyCustomDateRange()" />
+    </div>
+  </div>
+  <div id="budgetOverview"></div>
+  <div class="tabs" id="platformTabs"></div>
+  <div id="tabContent"></div>
+</div>
+
+<!-- CSV IMPORT MODAL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <h2>Import CSV</h2>
+    <p>Prevuci CSV fajl ili klikni da izabereš. Dashboard automatski detektuje platformu.</p>
+    <div class="import-select">
+      <div>
+        <label>Klijent</label>
+        <select id="importClient">
+          <option value="nlb">NLB Komercijalna banka</option>
+          <option value="krka">Krka Terme</option>
+          <option value="urban">Urban Garden</option>
+        </select>
+      </div>
+      <div>
+        <label>Mesec</label>
+        <input type="month" id="importMonth" />
+      </div>
+    </div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-zone-icon">📄</div>
+      <div class="drop-zone-text"><strong>Klikni</strong> ili prevuci CSV fajl ovde</div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv" style="display:none" />
+    <div class="import-result" id="importResult"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button class="btn" onclick="closeImportModal()">Zatvori</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUDGET MODAL -->
+<div class="modal-overlay" id="budgetModal">
+  <div class="modal">
+    <h2>Podesi budžet</h2>
+    <p>Unesi mesečni budžet po klijentu i platformi.</p>
+    <div class="budget-modal-grid" id="budgetForm"></div>
+    <div class="budget-modal-actions">
+      <button class="btn" onclick="closeBudgetModal()">Otkaži</button>
+      <button class="btn btn-primary" onclick="saveBudgets()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHEETS SYNC MODAL -->
+<div class="modal-overlay" id="sheetsModal">
+  <div class="modal" style="width:700px;">
+    <h2>Google Sheets Sync</h2>
+    <p>Unesi publish CSV linkove za svaki klijent/platformu. (File → Share → Publish to web → CSV)</p>
+    <div id="sheetsForm" style="max-height:55vh;overflow-y:auto;"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:20px;align-items:center;">
+      <button class="btn" onclick="syncAllSheets()" id="syncAllBtn" style="background:var(--green);color:white;border-color:var(--green);">Sync sve</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeSheetsModal()">Zatvori</button>
+        <button class="btn btn-primary" onclick="saveSheetLinks()">Sačuvaj linkove</button>
+      </div>
+    </div>
+    <div id="syncStatus" style="margin-top:12px;font-size:12px;color:var(--text-secondary);"></div>
+  </div>
+</div>
+
+<!-- PRELOADED CREATIVES (hidden) -->
+<div id="creativesPreload" style="display:none;"></div>
+
+<!-- NOTIFICATION -->
+<div class="notification" id="notification"></div>
+
+<script src="data.js"></script>
+<script src="views.js"></script>
+<script src="app.js"></script>
+<script src="auth.js"></script>
+
+</div><!-- /appContent -->
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="krkareport.js"></script>
+</body>
+</html>
